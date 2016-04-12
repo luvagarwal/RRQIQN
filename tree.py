@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 from __future__ import division
 from sympy import *
+from sympy.matrices import *
+from sympy.physics.quantum import TensorProduct
 from sympy.parsing.sympy_parser import parse_expr
 
 class node:
@@ -81,6 +83,52 @@ def _nodes_as_array(n, level):
         ans += _nodes_as_array(node, level)
     return ans
 
+# def subsitute3(expr):
+#     p, l, q, Q, L, P, b, a = symbols('p l q Q L P, b, a')
+#     change = [l, a, p, q, b]
+#     for sym in change:
+#         expr = expr.subs()
+
+def subsitute2(expr):
+    p, l, q, Q, L, P, b, a = symbols('p l q Q L P, b, a')
+    change = [l, a, p, q, b]
+    for sym in change:
+        expr = expr.subs(sym*conjugate(sym), Abs(sym)**2)
+    return expr
+
+def subsitute(coeff_comm):
+    p, l, q, Q, L, P = symbols('p l q Q L P')
+    coeff_comm = coeff_comm.subs(L, 1/(1+Abs(l)**2)**0.5).subs(P, 1/(1+Abs(p)**2)**0.5).subs(Q, 1/(1+Abs(q)**2)**0.5)
+    return coeff_comm
+
+def density_matrix(level):
+    n = get_node()
+    ans = _nodes_as_array(n, level)
+    d_matrix = Matrix([[0, 0, 0, 0] for i in xrange(4)])
+    for a in ans:
+        if a.typ == 1:
+            coeff = [a.coeff[0], 0, 0, a.coeff[1]]
+        else:
+            coeff = [0, a.coeff[0], a.coeff[1], 0]
+        m = Matrix(coeff)
+        m = m*m.conjugate().transpose()
+        coeff_comm = subsitute(a.coeff_comm)
+        m = m*coeff_comm*coeff_comm
+        d_matrix += m
+    for i in xrange(4):
+        for j in xrange(4):
+            d_matrix[i, j] = subsitute2(combsimp(d_matrix[i, j]))
+            # d_matrix[i, j] = subsitute3(d_matrix[i, j])
+    return d_matrix
+
+def print_density_matrix(level):
+    " Pretty print a density matrix "
+    m = density_matrix(level)
+    for i in xrange(4):
+        for j in xrange(4):
+            pprint(m[i, j])
+    return m
+
 def nodes_as_array(level, typ=None):
     n = get_node()
     ans = _nodes_as_array(n, level)
@@ -95,7 +143,7 @@ def nodes_as_array(level, typ=None):
         else:
             if typ and typ != a.typ:
                 continue
-            tmp = "%s*(%s*Symbol('|01|') + %s*Symbol('|10|')"%(a.coeff_comm, a.coeff[0], a.coeff[1])
+            tmp = "%s*(%s*Symbol('|01|') + %s*Symbol('|10|'))"%(a.coeff_comm, a.coeff[0], a.coeff[1])
             tmp = parse_expr(tmp)
             f_ans.append(tmp)
     return f_ans
