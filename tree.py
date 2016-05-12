@@ -7,6 +7,9 @@ from sympy.parsing.sympy_parser import parse_expr
 
 
 class node:
+    """
+    Describes the node in state tree while swapping.
+    """
     def __init__(self, level, typ, coeff, coeff_comm=1, max_level=4):
         self.typ = typ
         self.coeff = coeff
@@ -42,6 +45,11 @@ def compact(a):
     return collect(a, a.atoms(Symbol), func=factor)
 
 def parse_level(node, level, t="phi_plus"):
+    """
+    parse a level of the state tree and
+    return all the coefficients of the node
+    in `t` state
+    """
     d = {
         'phi_plus': 0,
         'phi_minus': 1, 
@@ -66,11 +74,17 @@ def parse_level(node, level, t="phi_plus"):
     return ans
 
 def get_node():
+    " get the root node "
     a, b = symbols('a b')
     n = node(0, 1, [a, b])
     return n 
 
 def print_level(level, t="phi_plus"):
+    """
+    parse a level of the state tree and
+    prints all the coefficients of the node
+    in `t` state
+    """
     n = get_node()
     ans = parse_level(n, level, t)
     return ans
@@ -103,6 +117,12 @@ def subsitute(coeff_comm):
     return coeff_comm
 
 def density_matrix(level):
+    """
+    Using all the nodes in a particular level
+    of the state tree, find a mixed state
+    representing the probabilistic mixture of
+    all the nodes
+    """
     n = get_node()
     ans = _nodes_as_array(n, level)
     d_matrix = Matrix([[0, 0, 0, 0] for i in xrange(4)])
@@ -137,6 +157,10 @@ def print_density_matrix(level):
     return m
 
 def nodes_as_array(level, typ=None):
+    """
+    return all the nodes in a particular
+    level as an array
+    """
     n = get_node()
     ans = _nodes_as_array(n, level)
     f_ans = []
