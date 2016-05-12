@@ -5,6 +5,7 @@ from sympy.matrices import *
 from sympy.physics.quantum import TensorProduct
 from sympy.parsing.sympy_parser import parse_expr
 
+
 class node:
     def __init__(self, level, typ, coeff, coeff_comm=1, max_level=4):
         self.typ = typ
@@ -19,8 +20,8 @@ class node:
         a, b = self.coeff
         c = self.coeff_comm
         level = self.level
-        # p, l = symbols('p%s l%s'%(level+1, level+1))
-        p, l, q, Q, L, P = symbols('p l q Q L P')
+        q, Q = symbols('q%s Q%s'%(level+1, level+1))
+        p, l, L, P = symbols('p l L P')
         if self.typ == 1:
             return  [        
                 node(level+1, 1, [a, b*q*l.conjugate()], c*Q*L),
@@ -105,6 +106,7 @@ def density_matrix(level):
     n = get_node()
     ans = _nodes_as_array(n, level)
     d_matrix = Matrix([[0, 0, 0, 0] for i in xrange(4)])
+    all_m = []
     for a in ans:
         if a.typ == 1:
             coeff = [a.coeff[0], 0, 0, a.coeff[1]]
@@ -112,21 +114,26 @@ def density_matrix(level):
             coeff = [0, a.coeff[0], a.coeff[1], 0]
         m = Matrix(coeff)
         m = m*m.conjugate().transpose()
-        coeff_comm = subsitute(a.coeff_comm)
+        coeff_comm = a.coeff_comm
         m = m*coeff_comm*coeff_comm
+        all_m.append(m)
         d_matrix += m
+        # for i in xrange(4):
+        #     for j in xrange(4):
+        #         pprint(d_matrix[i, j])
+        # print "---------------------------------------------------------------"
     for i in xrange(4):
         for j in xrange(4):
             d_matrix[i, j] = subsitute2(combsimp(d_matrix[i, j]))
-            # d_matrix[i, j] = subsitute3(d_matrix[i, j])
-    return d_matrix
+            #d_matrix[i, j] = subsitute3(d_matrix[i, j])
+    return [d_matrix, all_m]
 
 def print_density_matrix(level):
     " Pretty print a density matrix "
     m = density_matrix(level)
-    for i in xrange(4):
-        for j in xrange(4):
-            pprint(m[i, j])
+    # for i in xrange(4):
+    #     for j in xrange(4):
+    #         pprint(m[i, j])
     return m
 
 def nodes_as_array(level, typ=None):
