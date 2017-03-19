@@ -135,10 +135,12 @@ def get_density_matrix(level):
 
     return simplify_density_matrix(density_matrix)
 
-def print_density_matrix(level):
+def print_density_matrix(level, only_diagonal=True):
     density_matrix = get_density_matrix(level)
     for row in xrange(4):
         for col in xrange(4):
+            if only_diagonal and row != col:
+                continue
             pprint(density_matrix[row, col])
 
 def get_states(level):
@@ -155,5 +157,4 @@ def main():
     pass
 
 if __name__ == "__main__":
-    print get_states(5)
-    print print_density_matrix(5)
+    print_density_matrix(4)
