@@ -10,10 +10,7 @@ def diagonalElementsInLatex(level):
 
     m = print_density_matrix(level)
     for i in xrange(4):
-        print sharelatex(latex(m[i, i]))
-        print
-        print
-
+        print sharelatex(latex(m[i, i])), "\n\n"
 
 def get_resource_parameters(level=None):
     if level is not None:
