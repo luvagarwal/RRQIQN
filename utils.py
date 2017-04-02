@@ -28,7 +28,7 @@ def get_basis_parameters(level=None):
 def get_initial_secret_parameters():
     return symbols('a b', real=True)
 
-def subsitute2(expr):
+def subsitute(expr):
     p, l, L, P = get_resource_parameters()
     q, Q = get_basis_parameters()
     change = [l, a, p, q, b]
@@ -36,14 +36,8 @@ def subsitute2(expr):
         expr = expr.subs(sym*conjugate(sym), Abs(sym)**2)
     return expr
 
-def subsitute(coeff_comm):
-    p, l, L, P = get_resource_parameters()
-    q, Q = get_basis_parameters()
-    coeff_comm = coeff_comm.subs(L, 1/(1+Abs(l)**2)**0.5).subs(P, 1/(1+Abs(p)**2)**0.5).subs(Q, 1/(1+Abs(q)**2)**0.5)
-    return coeff_comm
-
 def simplify_density_matrix(density_matrix):
     for row in xrange(4):
         for col in xrange(4):
-            density_matrix[row, col] = subsitute2(combsimp(density_matrix[row, col]))
+            density_matrix[row, col] = subsitute(combsimp(density_matrix[row, col]))
     return density_matrix
