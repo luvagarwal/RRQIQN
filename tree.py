@@ -1,9 +1,10 @@
 from __future__ import division
 import re
 from argparse import Namespace
-from sympy import *
-from sympy.matrices import *
+from sympy import pprint
+from sympy.matrices import Matrix
 from sympy.parsing.sympy_parser import parse_expr
+from sympy import sqrt
 
 from utils import *
 
@@ -26,9 +27,10 @@ class State(object):
     def __init__(self, level, coeffs, coeff_comm=1):
         self.coeffs = coeffs
         self.coeff_comm = coeff_comm
-        self.level = level
         self.resource_parameters = get_resource_parameters()
         self.basis_parameters = get_basis_parameters()
+        self.initial_secret_params = get_initial_secret_parameters()
+        self.level = level
 
     def get_children(self, fall_type=None):
         try:
@@ -74,7 +76,7 @@ class State(object):
 
     def get_density_matrix(self, depth):
         nodes = self.get_descendants(depth)
-        density_matrix = Matrix([[0, 0, 0, 0] for i in xrange(4)])
+        density_matrix = Matrix([[0]*4 for i in xrange(4)])
 
         for node in nodes:
             matrix = node.as_density_matrix()
@@ -90,25 +92,20 @@ class State(object):
                     continue
                 pprint(density_matrix[row, col])
 
-    def get_abs_coeffs(self):
-        abs_coeff = lambda coeff: -1*coeff if -1 in coeff.args else coeff
-        return map(abs_coeff, self.coeffs)
-
     def as_single_qubit(self):
-        """
-        1. Convert 2 qubit to 1 qubit
-        2. Apply basic unitary operator
-        """
-        a, b = get_initial_secret_parameters()
-        coeffs = self.get_abs_coeffs()
-        return coeffs if a in coeffs[0].args or a is coeffs[0] else coeffs[::-1]
+        a_dash, b_dash = self.coeffs
+        norm = sqrt(a_dash**2 + b_dash**2)
+        a_dash /= norm
+        b_dash /= norm
+        p, l, _, _ = self.resource_parameters
+        q, _ = self.basis_parameters
+        return SingleQubit([a_dash, b_dash], self.initial_secret_params, [p, l, q])
 
     def get_overlap(self):
         pass
 
     def pprint(self):
         pprint(self.as_sympy_expr())
-
 
     def __repr__(self):
         return repr(self.as_sympy_expr())
@@ -158,6 +155,93 @@ class StatePsi(State):
 
     def get_coefficients_as_general_state(self):
         return [0, self.coeffs[0], self.coeffs[1], 0]
+
+
+class SingleQubit(object):
+    def __init__(self, coeffs, initial_secret_params, resouce_and_basis_params):
+        self.coeffs = coeffs
+        self.initial_secret_params = initial_secret_params
+        self.resouce_and_basis_params = resouce_and_basis_params
+
+    def subs_param(self, param, val):
+        self.coeffs = [coeff.subs(param, val) for coeff in self.coeffs]
+
+    def subs_params(self, params, with_val=False):
+        if not with_val:
+            random_params = {}
+            for param in params:
+                random_params[param] = random.random()
+        else:
+            random_params = params
+
+        for param, val in random_params.items():
+            self.subs_param(param, val)
+        return random_params
+
+    def subs_all(self):
+        a, b = self.initial_secret_params
+        self.subs_b_by_a()
+        return self.subs_params(self.resouce_and_basis_params + [a])
+
+    def subs_b_by_a(self):
+        a, b = self.initial_secret_params
+        self.subs_param(b, sqrt(1 - a**2))
+
+    def subs_secret_params(self):
+        a, b = self.initial_secret_params
+        self.subs_b_by_a()
+        return self.subs_params([a])
+
+    def subs_resource_and_basis_params(self):
+        return self.subs_params(self.resouce_and_basis_params)
+
+    def get_abs_coeffs(self):
+        abs_coeff = lambda coeff: -1*coeff if -1 in coeff.args else coeff
+        return map(abs_coeff, self.coeffs)
+
+    def apply_basic_unitary(self):
+        a, b = self.initial_secret_params
+        coeffs = self.get_abs_coeffs()
+        coeffs = coeffs if a in coeffs[0].args or a is coeffs[0] else coeffs[::-1]
+        return SingleQubit(coeffs, self.initial_secret_params, self.resouce_and_basis_params)
+
+    def apply_advanced_unitary(self):
+        a, b = self.initial_secret_params
+        self.subs_b_by_a()
+        b = (1 - a**2) ** 0.5
+        a_dash, b_dash = self.coeffs
+
+        alpha = a*a_dash + b*b_dash
+        avg_alpha = monte_carlo(alpha, a)
+        debug(avg_alpha=avg_alpha)
+
+        beta = a_dash*b - b_dash*a
+        avg_beta = monte_carlo(beta, a)
+        debug(avg_beta=avg_beta)
+
+        x = avg_alpha / (avg_alpha**2 + avg_beta**2)**0.5
+        debug(x=x)
+        y = (1 - x**2) ** 0.5
+        optimized_coeffs = [x * a_dash - y * b_dash, y * a_dash + x * b_dash]
+        return SingleQubit(optimized_coeffs, self.initial_secret_params, self.resouce_and_basis_params)
+
+    def norm(self):
+        a, b = self.coeffs
+        return (a**2 + b**2) ** 0.5
+
+    def dot_product(self, state):
+        a1, b1 = self.coeffs
+        a2, b2 = state.coeffs
+        return (a1*a2 + b1*b2) / (self.norm() * state.norm())
+
+    def as_sympy_expr(self):
+        expr = "%s*Symbol('|0|') + %s*Symbol('|1|')"%(self.coeffs[0], self.coeffs[1])
+        expr = parse_expr(expr)
+        return expr
+
+    def pprint(self):
+        pprint(self.as_sympy_expr())
+
 
 
 def cache(fn):
