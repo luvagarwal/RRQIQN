@@ -7,6 +7,7 @@ from sympy.parsing.sympy_parser import parse_expr
 from sympy import sqrt
 
 from utils import *
+from paramvalues import ParamsSingleton
 
 
 TYPES = {
@@ -24,15 +25,31 @@ def state_factory(type, level, coeffs, coeff_comm=1):
 
 
 class State(object):
+    """
+    Parent class for a general 2 qubit state. This class is
+    inherited by classes corresponding to specific 2 qubit states
+    like PHI and PSI state.
+    """
+
     def __init__(self, level, coeffs, coeff_comm=1):
+        # It's an array of size 2 with a_dash and b_dash as values
         self.coeffs = coeffs
+        # It is the square root of probablity of this state's occurence.
         self.coeff_comm = coeff_comm
+        # p, l
         self.resource_parameters = get_resource_parameters()
+        # q
         self.basis_parameters = get_basis_parameters()
+        # a, b
         self.initial_secret_params = get_initial_secret_parameters()
+        # number of swappings
         self.level = level
 
     def get_children(self, fall_type=None):
+        """
+        Return children corresponding to this node.
+        So, it will return array of size 4.
+        """
         try:
             self.children
         except AttributeError:
@@ -157,6 +174,8 @@ class StatePsi(State):
         return [0, self.coeffs[0], self.coeffs[1], 0]
 
 
+
+
 class SingleQubit(object):
     def __init__(self, coeffs, initial_secret_params, resouce_and_basis_params):
         self.coeffs = coeffs
@@ -168,9 +187,7 @@ class SingleQubit(object):
 
     def subs_params(self, params, with_val=False):
         if not with_val:
-            random_params = {}
-            for param in params:
-                random_params[param] = random.random()
+            random_params = ParamsSingleton().get_params_values(params)
         else:
             random_params = params
 
