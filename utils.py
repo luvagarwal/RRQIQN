@@ -1,5 +1,6 @@
 import random
-from sympy import symbols, conjugate, Abs, combsimp, latex
+from sympy import symbols, conjugate, Abs, combsimp, latex, lambdify
+import numpy as np
 
 
 def diagonalElementsInLatex(level):
@@ -40,18 +41,39 @@ def simplify_density_matrix(density_matrix):
             density_matrix[row, col] = subsitute(combsimp(density_matrix[row, col]))
     return density_matrix
 
-def debug(**kwargs):
-    def upto_n_decimal_points(num, upto=2):
+def format(num, upto=2):
         num = str(num).split('.')
-        return "%s.%s" % (num[0], num[1][:2])
+        if len(num) == 1:
+            print num
+            return str(num[0])
+        return "%s.%s" % (num[0], num[1][:upto])
 
+def debug(**kwargs):
     for key, val in kwargs.iteritems():
-        print "%s = %s" % (key, upto_n_decimal_points(val))
+        print "%s = %s" % (key, format(val))
 
-def monte_carlo(fn, var, domain=(0, 1), rounds=500):
+# def monte_carlo(fn, var, domain=(0, 1), rounds=1000):
+#     total = 0
+#     start, end = domain
+#     for _ in xrange(rounds):
+#         random_val = start + random.random() * (end - start)
+#         total += fn.subs(var, random_val)
+#     return total / rounds
+
+# def monte_carlo_lambda_optimized(fn, var, domain=(0, 1), rounds=1000):
+# def monte_carlo(fn, var, domain=(0, 1), rounds=1000):
+#     fn = lambdify(var, fn)
+#     total = 0
+#     start, end = domain
+#     for _ in xrange(rounds):
+#         random_val = start + random.random() * (end - start)
+#         total += fn(random_val)
+#     return total / rounds
+
+# def monte_carlo_lambda_plus_numpy_optimized(fn, var, domain=(0, 1), rounds=1000):
+def monte_carlo(fn, var, domain=(0, 1), rounds=1000):
+    fn = lambdify(var, fn, "numpy")
     total = 0
     start, end = domain
-    for _ in xrange(rounds):
-        random_val = start + random.random() * (end - start)
-        total += fn.subs(var, random_val)
-    return total / rounds
+    rand_nums = start + np.random.rand(rounds) * (end - start)
+    return np.mean(fn(rand_nums))

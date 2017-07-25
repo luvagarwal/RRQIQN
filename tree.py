@@ -26,7 +26,7 @@ def state_factory(type, level, coeffs, coeff_comm=1):
 
 class State(object):
     """
-    Parent class for a general 2 qubit state. This class is
+    Representation of a general 2 qubit state. This class is
     inherited by classes corresponding to specific 2 qubit states
     like PHI and PSI state.
     """
@@ -47,13 +47,13 @@ class State(object):
 
     def get_children(self, fall_type=None):
         """
-        Return it's 4 children states after a swapping arranged
+        Return it's 4 children states after a swapping, arranged
         according to the measurement fall as:
         [phi_plus, phi_minus, psi_plus, psi_minus]
 
-        Find children nodes is an expensive process specially if
+        Finding children nodes is an expensive process specially if
         we are dealing with too many swappings. So it will only
-        make children when demanded and cache them. It doesn't
+        calculate children on demand and cache them. It doesn't
         precalculate them.
         """
         try:
@@ -273,7 +273,7 @@ class SingleQubit(object):
 
     def subs_all(self):
         """
-        Substitute all parameters i.e. [a, b, p, q, q]. Note that b is substituted with
+        Substitute all parameters i.e. [a, b, p, q, l]. Note that b is substituted with
         (1-a**2)**0.5
         """
         a, b = self.initial_secret_params
@@ -309,26 +309,35 @@ class SingleQubit(object):
         coeffs = coeffs if a in coeffs[0].args or a is coeffs[0] else coeffs[::-1]
         return SingleQubit(coeffs, self.initial_secret_params, self.resource_and_basis_parameters)
 
-    def apply_advanced_unitary(self):
-        " Apply advanced unitary "
+    def calculate_advanced_unitary(self):
         a, b = self.initial_secret_params
         self.subs_b_by_a()
         b = (1 - a**2) ** 0.5
         a_dash, b_dash = self.coeffs
 
         alpha = a*a_dash + b*b_dash
-        avg_alpha = monte_carlo(alpha, a)
-        debug(avg_alpha=avg_alpha)
+        # avg_alpha = monte_carlo(alpha, a)
+        # debug(avg_alpha=avg_alpha)
 
         beta = a_dash*b - b_dash*a
-        avg_beta = monte_carlo(beta, a)
-        debug(avg_beta=avg_beta)
+        # avg_beta = monte_carlo(beta, a)
+        # debug(avg_beta=avg_beta)
 
-        x = avg_alpha / (avg_alpha**2 + avg_beta**2)**0.5
-        debug(x=x)
+        x = monte_carlo(alpha / (alpha**2 + beta**2) ** 0.5, a)
+        # x = avg_alpha / (avg_alpha**2 + avg_beta**2)**0.5
+        # debug(x=x)
         y = (1 - x**2) ** 0.5
+        return x, y
+
+    def apply_advanced_unitary(self, return_unitary=False):
+        " Apply advanced unitary "
+        x, y = self.calculate_advanced_unitary()
+        a_dash, b_dash = self.coeffs
         optimized_coeffs = [x * a_dash - y * b_dash, y * a_dash + x * b_dash]
-        return SingleQubit(optimized_coeffs, self.initial_secret_params, self.resource_and_basis_parameters)
+        new_state = SingleQubit(optimized_coeffs, self.initial_secret_params, self.resource_and_basis_parameters)
+        if return_unitary:
+            return x, new_state
+        return new_state
 
     def norm(self):
         " Return it's norm which is square root of sum of it's squared coefficients "
@@ -347,8 +356,10 @@ class SingleQubit(object):
         states that you see on the console.
         """
         expr = "%s*Symbol('|0|') + %s*Symbol('|1|')"%(self.coeffs[0], self.coeffs[1])
-        expr = parse_expr(expr)
-        return expr
+        return parse_expr(expr)
+
+    def __repr__(self):
+        return repr(self.as_sympy_expr())
 
     def pprint(self):
         pprint(self.as_sympy_expr())

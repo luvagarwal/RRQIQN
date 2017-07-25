@@ -19,7 +19,14 @@ class ParamsSingleton(object):
         values = {}
         for param in params:
             if self.params[param] is None:
-                self.params[param] = random.random()
+                raise Exception("Value of variable not set.")
+                # self.params[param] = random.random() / 1000
             values[param] = self.params[param]
-
+        # print values
         return values
+
+    def set_params_values(self, params):
+        for param in params:
+            self.params[param] = params[param]
+
+                
